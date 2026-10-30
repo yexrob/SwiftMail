@@ -120,6 +120,11 @@ public indirect enum SearchCriteria: Sendable {
     /** Matches messages that do not have the `\Seen` flag set. */
     case unseen
 
+    /** Matches messages for a query in the Gmail web search syntax (`X-GM-RAW`), such as `category:promotions`.
+     *  Requires the `X-GM-EXT-1` capability; other IMAP servers answer with a tagged BAD.
+     */
+    case gmailRaw(String)
+
     /** Matches messages older than the specified number of seconds (RFC 5032 WITHIN extension).
      *  The interval must be a positive integer (≥ 1). Requires the server to advertise the `WITHIN` capability.
      */
@@ -172,7 +177,7 @@ public indirect enum SearchCriteria: Sendable {
     var requiresUTF8Charset: Bool {
         switch self {
             case .bcc(let value), .body(let value), .cc(let value), .from(let value),
-                 .subject(let value), .text(let value), .to(let value):
+                 .subject(let value), .text(let value), .to(let value), .gmailRaw(let value):
                 return !Self.isASCII(value)
             case .header(_, let value):
                 return !Self.isASCII(value)
@@ -315,6 +320,7 @@ public indirect enum SearchCriteria: Sendable {
             case .to(let value):      return .to(stringToBuffer(value))
             case .header(let field, let value):
                 return .header(field, stringToBuffer(value))
+            case .gmailRaw(let value): return .gmailRaw(stringToBuffer(value))
             default: return nil
         }
     }

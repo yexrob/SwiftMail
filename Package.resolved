@@ -140,7 +140,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio-imap",
       "state" : {
-        "revision" : "14ad3887dab9ca5aba38ee0ace18fddf40e9491f"
+        "revision" : "544677dbaaa52cf9acab7de3ed57dff955aa1da8"
       }
     },
     {

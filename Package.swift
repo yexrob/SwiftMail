@@ -59,7 +59,8 @@ let package = Package(
         // so any single response line longer than that, such as the BODYSTRUCTURE
         // of a message with dozens of attachments, fails with PayloadTooLargeError.
         // Return to a version requirement once a release includes #849.
-        .package(url: "https://github.com/apple/swift-nio-imap", revision: "14ad3887dab9ca5aba38ee0ace18fddf40e9491f"),
+        // 544677db adds apple/swift-nio-imap#853, the X-GM-RAW search key.
+        .package(url: "https://github.com/apple/swift-nio-imap", revision: "544677dbaaa52cf9acab7de3ed57dff955aa1da8"),
         // 2.37.1 includes the Windows-SDK BoringSSL header workarounds from
         // apple/swift-nio-ssl#585, scoped to the CNIOBoringSSL target. Full
         // NIOSSL Windows support remains blocked on apple/swift-nio-ssl#567.
