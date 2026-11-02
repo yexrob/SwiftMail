@@ -217,6 +217,7 @@ struct ClientIdentificationReplayTests {
         let connection = IMAPConnection(
             host: "localhost",
             port: 143,
+            proxy: nil,
             transportSecurity: .plainText,
             // Explicit since the designated initializer dropped its defaults: forgetting the
             // security policy is now a build error rather than a silently lax connection.

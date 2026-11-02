@@ -179,6 +179,7 @@ struct ReauthenticationAfterReconnectTests {
         IMAPConnection(
             host: "127.0.0.1",
             port: 143,
+            proxy: nil,
             transportSecurity: .plainText,
             minimumTLSVersion: .tlsv12,
             group: group,

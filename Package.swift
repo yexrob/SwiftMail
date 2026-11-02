@@ -65,6 +65,8 @@ let package = Package(
         // apple/swift-nio-ssl#585, scoped to the CNIOBoringSSL target. Full
         // NIOSSL Windows support remains blocked on apple/swift-nio-ssl#567.
         .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.37.1"),
+        // NIOSOCKS: the SOCKS5 client handler for a connection through a proxy (MailProxy).
+        .package(url: "https://github.com/apple/swift-nio-extras", from: "1.35.0"),
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.0"),
         // swift-testing releases track toolchain versions: 6.3.2's manifest is
         // swift-tools-version 6.2, so every platform that compiles the test
@@ -82,6 +84,7 @@ let package = Package(
             dependencies: [
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
+                .product(name: "NIOSOCKS", package: "swift-nio-extras"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "NIOIMAP", package: "swift-nio-imap"),
                 .product(name: "OrderedCollections", package: "swift-collections"),

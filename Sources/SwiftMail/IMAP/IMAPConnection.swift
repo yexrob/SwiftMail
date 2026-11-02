@@ -16,6 +16,8 @@ final class IMAPConnection {
 
     let host: String
     let port: Int
+    /// The proxy the TCP connection goes through to `host:port`; nil connects to the server.
+    let proxy: MailProxy?
     let transportSecurity: MailTransportSecurity
     let certificateVerificationPolicy: MailCertificateVerificationPolicy
     let minimumTLSVersion: MailTLSMinimumVersion
@@ -61,9 +63,11 @@ final class IMAPConnection {
     ///   documentation claimed the policy governed every transport. A default turns "forgot to
     ///   pass the security policy" into "chose the lax one", and neither the compiler nor a
     ///   reviewer can see the difference. Without defaults, omitting one is a build error.
+    ///   `proxy` has none for the same reason: an IDLE connection that left it out would go around the proxy.
     init(
         host: String,
         port: Int,
+        proxy: MailProxy?,
         transportSecurity: MailTransportSecurity = .automatic,
         certificateVerificationPolicy: MailCertificateVerificationPolicy = .fullVerification,
         minimumTLSVersion: MailTLSMinimumVersion,
@@ -78,6 +82,7 @@ final class IMAPConnection {
     ) {
         self.host = host
         self.port = port
+        self.proxy = proxy
         self.transportSecurity = transportSecurity
         self.certificateVerificationPolicy = certificateVerificationPolicy
         self.minimumTLSVersion = minimumTLSVersion
@@ -135,6 +140,7 @@ final class IMAPConnection {
         self.init(
             host: host,
             port: port,
+            proxy: nil,
             transportSecurity: Self.resolveLegacyTransportSecurity(port: port, useTLS: useTLS),
             certificateVerificationPolicy: .fullVerification,
             minimumTLSVersion: minimumTLSVersion,

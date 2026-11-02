@@ -24,9 +24,12 @@ extension IMAPConnection {
         let tlsTransportMode = try Self.resolveTLSTransportMode(port: port, transportSecurity: transportSecurity)
         let greetingPromise = group.next().makePromise(of: [Capability].self)
         let greetingHandler = IMAPGreetingHandler(commandTag: "", promise: greetingPromise)
+        // A failed tunnel fails the greeting with its MailProxyError; the greeting timer covers the tunnel.
+        let tunnel = proxy.map { MailProxyTunnel(proxy: $0, established: group.next().makePromise(of: Void.self)) }
+        tunnel?.established.futureResult.whenFailure { greetingPromise.fail($0) }
 
-        let bootstrap = makeConnectionBootstrap(initialTLSMode: tlsTransportMode, greetingHandler: greetingHandler)
-        let channel = try await openChannel(bootstrap: bootstrap, greetingPromise: greetingPromise)
+        let bootstrap = makeConnectionBootstrap(initialTLSMode: tlsTransportMode, greetingHandler: greetingHandler, tunnel: tunnel)
+        let channel = try await openChannel(bootstrap: bootstrap, greetingPromise: greetingPromise, tunnel: tunnel)
 
         self.channel = channel
         self.isSessionAuthenticated = false
@@ -45,9 +48,11 @@ extension IMAPConnection {
 
     private func makeConnectionBootstrap(
         initialTLSMode: TLSTransportMode,
-        greetingHandler: IMAPGreetingHandler
+        greetingHandler: IMAPGreetingHandler,
+        tunnel: MailProxyTunnel?
     ) -> ClientBootstrap {
         let host = self.host
+        let port = self.port
         let certificateVerificationPolicy = self.certificateVerificationPolicy
         let minimumTLSVersion = self.minimumTLSVersion
         let duplexLogger = self.duplexLogger
@@ -63,6 +68,11 @@ extension IMAPConnection {
             .channelInitializer { channel in
                 do {
                     let parserOptions = parserLimits.makeParserOptions(bufferLimit: responseBufferLimit)
+
+                    // The tunnel goes ahead of TLS: it holds the ClientHello until the proxy has opened the tunnel.
+                    if let tunnel {
+                        try channel.pipeline.syncOperations.addHandlers(tunnel.handlers(host: host, port: port))
+                    }
 
                     if case .implicitTLS = initialTLSMode {
                         let sslHandler = try Self.makeTLSHandler(
@@ -100,15 +110,20 @@ extension IMAPConnection {
 
     private func openChannel(
         bootstrap: ClientBootstrap,
-        greetingPromise: EventLoopPromise<[Capability]>
+        greetingPromise: EventLoopPromise<[Capability]>,
+        tunnel: MailProxyTunnel?
     ) async throws -> Channel {
         do {
+            if let tunnel {
+                return try await bootstrap.connect(host: tunnel.proxy.host, port: tunnel.proxy.port).get()
+            }
             return try await bootstrap.connect(host: host, port: port).get()
         } catch {
             // Fail the greeting promise before rethrowing — prevents NIO "leaking promise"
             // fatal error when TCP connection fails (e.g. no internet).
-            greetingPromise.fail(error)
-            throw error
+            let failure: Error = tunnel.map { $0.connectFailed(error) } ?? error
+            greetingPromise.fail(failure)
+            throw failure
         }
     }
 

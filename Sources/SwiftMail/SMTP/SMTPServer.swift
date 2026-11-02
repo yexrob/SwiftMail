@@ -69,6 +69,9 @@ public actor SMTPServer {
     /** The port number of the SMTP server */
     let port: Int
 
+    /// The proxy the connection goes through; nil connects to the server.
+    let proxy: MailProxy?
+
     /// The domain or address literal sent as the client identity in every `EHLO` command.
     public let clientIdentity: String
 
@@ -164,6 +167,8 @@ public actor SMTPServer {
          lookup-free default is ``SMTPServer/defaultClientIdentity``. A configured value is
          sent before TLS as well as after STARTTLS, so it should not contain private device
          information.
+       - proxy: A SOCKS5 or HTTP CONNECT proxy for the connection. TLS runs through the tunnel with `host` as SNI and
+         certificate name. Defaults to nil, a connection to `host:port`.
 
      `.automatic` infers the initial security mode from the port:
      - Port 25: Plain SMTP (not recommended)
@@ -181,10 +186,12 @@ public actor SMTPServer {
         minimumTLSVersion: MailTLSMinimumVersion = .tlsv12,
         numberOfThreads: Int = 1,
         submissionTimeouts: SMTPSubmissionTimeouts = SMTPSubmissionTimeouts(),
-        clientIdentity: String = SMTPServer.defaultClientIdentity
+        clientIdentity: String = SMTPServer.defaultClientIdentity,
+        proxy: MailProxy? = nil
     ) {
         self.host = host
         self.port = port
+        self.proxy = proxy
         self.clientIdentity = clientIdentity
         self.transportSecurity = transportSecurity
         self.certificateVerificationPolicy = certificateVerificationPolicy

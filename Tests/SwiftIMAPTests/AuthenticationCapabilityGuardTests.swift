@@ -149,6 +149,7 @@ struct AuthenticationCapabilityGuardTests {
         IMAPConnection(
             host: "127.0.0.1",
             port: port,
+            proxy: nil,
             transportSecurity: .plainText,
             minimumTLSVersion: .tlsv12,
             group: group,

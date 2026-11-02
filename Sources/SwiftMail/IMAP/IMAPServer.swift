@@ -36,6 +36,9 @@ public actor IMAPServer {
     /** The port number of the IMAP server */
     let port: Int
 
+    /// The proxy every connection of this server goes through: primary, IDLE and named. Nil connects to the server.
+    let proxy: MailProxy?
+
     /// Explicit TLS preference. `.automatic` infers from the standard IMAP ports.
     let transportSecurity: MailTransportSecurity
 
@@ -238,6 +241,8 @@ public actor IMAPServer {
      ``IMAPServer/defaultResponseBufferLimit`` (1 MB), which handles large SEARCH
      responses containing thousands of message IDs. Raise it for very dense
      mailboxes whose SEARCH/FETCH responses exceed 1 MB. Must be greater than 0.
+     - proxy: A SOCKS5 or HTTP CONNECT proxy for every connection of this server. TLS runs through the tunnel with
+     `host` as SNI and certificate name. Defaults to nil, a connection to `host:port`.
 
      - Precondition: `responseBufferLimit > 0` — a non-positive limit would make
      every response exceed the buffer and fail with `PayloadTooLargeError`.
@@ -250,11 +255,13 @@ public actor IMAPServer {
         minimumTLSVersion: MailTLSMinimumVersion = .tlsv12,
         numberOfThreads: Int = 1,
         responseBufferLimit: Int = IMAPServer.defaultResponseBufferLimit,
-        parserLimits: IMAPParserLimits = .default
+        parserLimits: IMAPParserLimits = .default,
+        proxy: MailProxy? = nil
     ) {
         precondition(responseBufferLimit > 0, "responseBufferLimit must be greater than 0 bytes")
         self.host = host
         self.port = port
+        self.proxy = proxy
         self.transportSecurity = transportSecurity
         self.certificateVerificationPolicy = certificateVerificationPolicy
         self.minimumTLSVersion = minimumTLSVersion
@@ -271,6 +278,7 @@ public actor IMAPServer {
         self.primaryConnection = IMAPConnection(
             host: host,
             port: port,
+            proxy: proxy,
             transportSecurity: transportSecurity,
             certificateVerificationPolicy: certificateVerificationPolicy,
             minimumTLSVersion: minimumTLSVersion,

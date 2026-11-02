@@ -285,6 +285,7 @@ extension IMAPServer {
         return IMAPConnection(
             host: host,
             port: port,
+            proxy: proxy,
             transportSecurity: transportSecurity,
             certificateVerificationPolicy: certificateVerificationPolicy,
             minimumTLSVersion: minimumTLSVersion,
@@ -311,6 +312,7 @@ extension IMAPServer {
         return IMAPConnection(
             host: host,
             port: port,
+            proxy: proxy,
             transportSecurity: transportSecurity,
             certificateVerificationPolicy: certificateVerificationPolicy,
             minimumTLSVersion: minimumTLSVersion,

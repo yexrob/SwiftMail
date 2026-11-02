@@ -49,21 +49,30 @@ extension SMTPServer {
         // greeting is dropped at the pipeline tail. Same pattern as IMAPConnection.
         let greetingPromise = group.next().makePromise(of: SMTPGreeting.self)
         let greetingHandler = SMTPGreetingHandler(commandTag: "", promise: greetingPromise)
+        // A failed tunnel fails the greeting with its MailProxyError; the greeting timer covers the tunnel.
+        let tunnel = proxy.map { MailProxyTunnel(proxy: $0, established: group.next().makePromise(of: Void.self)) }
+        tunnel?.established.futureResult.whenFailure { greetingPromise.fail($0) }
 
         let bootstrap = makeClientBootstrap(
             useImplicitTLS: transportMode == .implicitTLS,
-            greetingHandler: greetingHandler
+            greetingHandler: greetingHandler,
+            tunnel: tunnel
         )
 
-        // Connect to the server
+        // Connect to the server, or to the proxy
         let channel: Channel
         do {
-            channel = try await bootstrap.connect(host: host, port: port).get()
+            if let tunnel {
+                channel = try await bootstrap.connect(host: tunnel.proxy.host, port: tunnel.proxy.port).get()
+            } else {
+                channel = try await bootstrap.connect(host: host, port: port).get()
+            }
         } catch {
             // Fail the greeting promise before rethrowing — prevents NIO "leaking
             // promise" fatal error when the TCP connection fails (e.g. no internet).
-            greetingPromise.fail(error)
-            throw error
+            let failure: Error = tunnel.map { $0.connectFailed(error) } ?? error
+            greetingPromise.fail(failure)
+            throw failure
         }
 
         // Store the channel
@@ -110,9 +119,11 @@ extension SMTPServer {
     /// Build the NIO `ClientBootstrap` used by ``connect()``, optionally configured for implicit TLS.
     private func makeClientBootstrap(
         useImplicitTLS: Bool,
-        greetingHandler: SMTPGreetingHandler
+        greetingHandler: SMTPGreetingHandler,
+        tunnel: MailProxyTunnel?
     ) -> ClientBootstrap {
         let host = self.host
+        let port = self.port
         let certificateVerificationPolicy = self.certificateVerificationPolicy
         let minimumTLSVersion = self.minimumTLSVersion
         let duplexLogger = self.duplexLogger
@@ -121,6 +132,14 @@ extension SMTPServer {
             .channelOption(ChannelOptions.socketOption(.so_reuseaddr), value: 1)
             .channelOption(ChannelOptions.tcpOption(.tcp_nodelay), value: 1)
             .channelInitializer { channel in
+                // The tunnel goes ahead of TLS: it holds the ClientHello until the proxy has opened the tunnel.
+                if let tunnel {
+                    do {
+                        try channel.pipeline.syncOperations.addHandlers(tunnel.handlers(host: host, port: port))
+                    } catch {
+                        return channel.eventLoop.makeFailedFuture(error)
+                    }
+                }
                 if useImplicitTLS {
                     do {
                         // Create SSL context with proper configuration for secure connection

@@ -117,6 +117,7 @@ struct IMAPTransportSecurityTests {
             let connection = IMAPConnection(
                 host: "localhost",
                 port: 143,
+                proxy: nil,
                 transportSecurity: .startTLS,
                 minimumTLSVersion: .tlsv12,
                 group: group,
